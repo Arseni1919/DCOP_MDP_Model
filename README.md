@@ -1,2 +1,2 @@
-# DCOP_MDP Model
+# DCOP-MDP Model
 
