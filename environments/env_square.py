@@ -10,6 +10,7 @@ class EnvAgent:
         self.start_pos = start_pos
         self.goal_pos = goal_pos
         self.n_agent = n_agent
+        self.num = n_agent
         self.name = f'agent_{n_agent}'
         self.pos = self.start_pos
         self.actions = [0, 1, 2, 3, 4]  # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
@@ -44,7 +45,7 @@ class SquareEnv:
         self.max_steps = 100
         self.reward_kinds = {'col': -100, 'goal': 100, 'step': -1}
 
-        self.fig, self.ax = plt.subplots(2, 1)
+        self.fig, self.ax = plt.subplots(3, 2)
 
     def build_obs(self, pos):
         # field = self.get_states()
@@ -79,7 +80,7 @@ class SquareEnv:
     def sample_actions(self):
         return {agent.name: random.choice(agent.actions) for agent in self.env_agents}
 
-    def get_next_possible_nodes(self, state_name, action):
+    def get_nodes_after_action(self, state_name, action):
         # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
         state_node = self.nodes_dict[state_name]
         straight = state_node
@@ -101,24 +102,31 @@ class SquareEnv:
             straight = state_node.left_node
             to_the_right = state_node.up_node
             to_the_left = state_node.down_node
+        return straight, to_the_right, to_the_left
 
+    def get_next_possible_nodes(self, state_name, action):
+        # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
+        straight, to_the_right, to_the_left = self.get_nodes_after_action(state_name, action)
+        probs_dict = {'straight': 0.9, 'left': 0.05, 'right': 0.05}
+        state_node = self.nodes_dict[state_name]
+        # node, truncated
         dynamics_dict = {}
-        # truncated_dict = {}
-        dynamics_dict[(state_node.xy_name, True)] = 0
-        if straight is not None:
-            dynamics_dict[(straight.xy_name, False)] = 0.8
+        if action == 0:
+            dynamics_dict[(state_node.xy_name, False)] = 1
         else:
-            dynamics_dict[(state_node.xy_name, True)] += 0.8
-            # truncated_dict[]
-        if to_the_right is not None:
-            dynamics_dict[(to_the_right.xy_name, False)] = 0.1
-        else:
-            dynamics_dict[(state_node.xy_name, True)] += 0.1
-        if to_the_left is not None:
-            dynamics_dict[(to_the_left.xy_name, False)] = 0.1
-        else:
-            dynamics_dict[(state_node.xy_name, True)] += 0.1
-
+            dynamics_dict[(state_node.xy_name, True)] = 0
+            if straight is not None:
+                dynamics_dict[(straight.xy_name, False)] = probs_dict['straight']
+            else:
+                dynamics_dict[(state_node.xy_name, True)] += probs_dict['straight']
+            if to_the_right is not None:
+                dynamics_dict[(to_the_right.xy_name, False)] = probs_dict['right']
+            else:
+                dynamics_dict[(state_node.xy_name, True)] += probs_dict['right']
+            if to_the_left is not None:
+                dynamics_dict[(to_the_left.xy_name, False)] = probs_dict['left']
+            else:
+                dynamics_dict[(state_node.xy_name, True)] += probs_dict['left']
         return dynamics_dict
 
     def get_next_possible_rewards(self, agent_name, dynamics_dict):
@@ -132,10 +140,12 @@ class SquareEnv:
             if truncated:
                 reward_dict[(node_name, truncated)] = self.reward_kinds['col']
                 termination_dict[(node_name, truncated)] = True
+                # termination_dict[(node_name, truncated)] = False
             else:
                 if (node.x, node.y) == agent.goal_pos:
                     reward_dict[(node_name, truncated)] = self.reward_kinds['goal']
                     termination_dict[(node_name, truncated)] = True
+                    # termination_dict[(node_name, truncated)] = False
                 else:
                     reward_dict[(node_name, truncated)] = self.reward_kinds['step']
                     termination_dict[(node_name, truncated)] = False
@@ -186,14 +196,27 @@ class SquareEnv:
         plt.show()
 
     def render(self, info):
-        plot_field(self.ax[0], info={
+        plot_field(self.ax[0][0], info={
             'height': self.height,
             'width': self.width,
             'nodes': self.nodes,
             'env_agents': self.env_agents,
         })
-        if 'value_graph' in info:
-            plot_value_function(self.ax[1], info=info['value_graph'])
+        # if 'policy_graph_0' in info:
+        #     plot_policy_function(self.ax[1][0], info=info['policy_graph_0'])
+        #
+        # if 'policy_graph_1' in info:
+        #     plot_policy_function(self.ax[1][1], info=info['policy_graph_1'])
+
+        if 'value_graph_0' in info:
+            plot_value_function(self.ax[1][0], info=info['value_graph_0'])
+
+        if 'value_graph_1' in info:
+            plot_value_function(self.ax[1][1], info=info['value_graph_1'])
+
+        if 'value_graph_united' in info:
+            plot_value_function_united(self.ax[0][1], info=info['value_graph_united'])
+
         plt.pause(0.001)
 
 
