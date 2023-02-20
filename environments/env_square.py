@@ -103,47 +103,46 @@ class SquareEnv:
             to_the_left = state_node.down_node
 
         dynamics_dict = {}
-        dynamics_dict[state_node.xy_name] = 0
+        # truncated_dict = {}
+        dynamics_dict[(state_node.xy_name, True)] = 0
         if straight is not None:
-            dynamics_dict[straight.xy_name] = 0.8
+            dynamics_dict[(straight.xy_name, False)] = 0.8
         else:
-            dynamics_dict[state_node.xy_name] += 0.8
+            dynamics_dict[(state_node.xy_name, True)] += 0.8
+            # truncated_dict[]
         if to_the_right is not None:
-            dynamics_dict[to_the_right.xy_name] = 0.1
+            dynamics_dict[(to_the_right.xy_name, False)] = 0.1
         else:
-            dynamics_dict[state_node.xy_name] += 0.1
+            dynamics_dict[(state_node.xy_name, True)] += 0.1
         if to_the_left is not None:
-            dynamics_dict[to_the_left.xy_name] = 0.1
+            dynamics_dict[(to_the_left.xy_name, False)] = 0.1
         else:
-            dynamics_dict[state_node.xy_name] += 0.1
+            dynamics_dict[(state_node.xy_name, True)] += 0.1
 
         return dynamics_dict
 
-    def get_next_possible_rewards(self, agent_name, possible_poses):
+    def get_next_possible_rewards(self, agent_name, dynamics_dict):
         reward_dict = {}
         termination_dict = {}
         agent = self.env_agents_dict[agent_name]
-        for node_name in possible_poses:
+        for (node_name, truncated), prob in dynamics_dict.items():
+            reward_dict[(node_name, truncated)] = 0
+            termination_dict[(node_name, truncated)] = False
             node = self.nodes_dict[node_name]
-            if (node.x, node.y) == agent.goal_pos:
-                reward_dict[node_name] = self.reward_kinds['goal']
-                # termination_dict[node_name] = True
-                termination_dict[node_name] = False
+            if truncated:
+                reward_dict[(node_name, truncated)] = self.reward_kinds['col']
+                termination_dict[(node_name, truncated)] = True
             else:
-                reward_dict[node_name] = self.reward_kinds['step']
-                termination_dict[node_name] = False
+                if (node.x, node.y) == agent.goal_pos:
+                    reward_dict[(node_name, truncated)] = self.reward_kinds['goal']
+                    termination_dict[(node_name, truncated)] = True
+                else:
+                    reward_dict[(node_name, truncated)] = self.reward_kinds['step']
+                    termination_dict[(node_name, truncated)] = False
         if self.step_count >= self.max_steps:
-            for node_name in possible_poses:
-                termination_dict[node_name] = True
+            for (node_name, truncated), prob in dynamics_dict.items():
+                termination_dict[(node_name, truncated)] = True
         return reward_dict, termination_dict
-
-    def dynamics(self, state, action, new_state):
-        """
-        :return: prob, reward
-        """
-        prob = 0
-        reward = 0
-        return prob, reward
 
     def take_actions(self, actions):
         for agent in self.env_agents:
@@ -153,15 +152,18 @@ class SquareEnv:
                 pos_name = f'{a_pos[0]}_{a_pos[1]}'
 
                 dynamics_dict = self.get_next_possible_nodes(pos_name, a_action)
-                possible_poses = list(dynamics_dict.keys())
-                probs = [dynamics_dict[node_name] for node_name in possible_poses]
-                reward_dict, termination_dict = self.get_next_possible_rewards(agent.name, possible_poses)
-
-                chosen_node_name = random.choices(possible_poses, weights=probs)[0]
+                possible_poses, probs = [], []
+                for (next_pos, truncated), prob in dynamics_dict.items():
+                    possible_poses.append((next_pos, truncated))
+                    probs.append(prob)
+                reward_dict, termination_dict = self.get_next_possible_rewards(agent.name, dynamics_dict)
+                # chosen_node_name, truncated = random.choices(list(dynamics_dict.keys()), weights=dynamics_dict.values(), k=1)[0]
+                chosen_node_name, truncated = random.choices(possible_poses, weights=probs)[0]
                 chosen_node = self.nodes_dict[chosen_node_name]
 
-                agent.reward = reward_dict[chosen_node_name]
-                agent.terminated = termination_dict[chosen_node_name]
+                agent.reward = reward_dict[(chosen_node_name, truncated)]
+                agent.terminated = termination_dict[(chosen_node_name, truncated)]
+                agent.truncated = truncated
                 agent.pos = (chosen_node.x, chosen_node.y)
 
     def step(self, actions):

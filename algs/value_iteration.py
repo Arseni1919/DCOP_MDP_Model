@@ -29,12 +29,11 @@ def value_iteration(env, agent_name='agent_0'):
             action_values_dict = {}
             for action in agent.actions:
                 dynamics_dict = env.get_next_possible_nodes(state, action)
-                possible_poses = list(dynamics_dict.keys())
-                reward_dict, termination_dict = env.get_next_possible_rewards(agent_name, possible_poses)
+                reward_dict, termination_dict = env.get_next_possible_rewards(agent_name, dynamics_dict)
                 curr_action_value = 0
-                for next_state, prob in dynamics_dict.items():
-                    reward = reward_dict[next_state]
-                    termination = termination_dict[next_state]
+                for (next_state, truncated), prob in dynamics_dict.items():
+                    reward = reward_dict[(next_state, truncated)]
+                    termination = termination_dict[(next_state, truncated)]
                     if termination:
                         curr_action_value += prob * reward
                     else:
@@ -54,7 +53,7 @@ def main():
     nodes, nodes_dict, height, width = build_graph_nodes(img_dir=img_dir, path='../maps', show_map=False)
     # s_g_nodes = random.sample(nodes, 2)
     square_env = SquareEnv(
-        start_positions=[(1, 1)],
+        start_positions=[(3, 3)],
         goal_positions=[(7, 7)],
         nodes=nodes, nodes_dict=nodes_dict,
         height=height, width=width
