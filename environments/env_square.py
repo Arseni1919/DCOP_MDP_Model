@@ -1,6 +1,7 @@
 import random
 
-from nodes_from_pic import build_graph_nodes
+from environments.nodes_from_pic import build_graph_nodes
+from plot_fucntions.plot_functions import *
 from globals import *
 
 
@@ -11,7 +12,7 @@ class EnvAgent:
         self.n_agent = n_agent
         self.name = f'agent_{n_agent}'
         self.pos = self.start_pos
-        self.actions = [0, 1, 2, 3, 4]  # 0 - up, 1 - right, 2 - down, 3 - left, 4 - stay
+        self.actions = [0, 1, 2, 3, 4]  # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
         self.terminated = False
         self.truncated = False
         self.reward = 0
@@ -19,9 +20,12 @@ class EnvAgent:
 
 def create_env_agents(start_positions, goal_positions):
     agents = []
+    agents_dict = {}
     for n_agent, (start_pos, goal_pos) in enumerate(zip(start_positions, goal_positions)):
-        agents.append(EnvAgent(start_pos, goal_pos, n_agent))
-    return agents
+        agent = EnvAgent(start_pos, goal_pos, n_agent)
+        agents.append(agent)
+        agents_dict[agent.name] = agent
+    return agents, agents_dict
 
 
 class SquareEnv:
@@ -34,63 +38,130 @@ class SquareEnv:
         self.width = width
 
         self.env_agents = None
+        self.env_agents_dict = None
         self.n_agents = None
-        self.fig, self.ax = plt.subplots(2, 1)
+        self.step_count = None
+        self.max_steps = 100
         self.reward_kinds = {'col': -100, 'goal': 100, 'step': -1}
 
+        self.fig, self.ax = plt.subplots(2, 1)
+
+    def build_obs(self, pos):
+        # field = self.get_states()
+        # field[f'{pos[0]}_{pos[1]}'] = 1
+        pos_name = f'{pos[0]}_{pos[1]}'
+        return pos_name
+
+    def get_states(self):
+        # return np.zeros((self.width, self.height))
+        return {node.xy_name: 0 for node in self.nodes}
+
     def reset(self):
-        self.env_agents = create_env_agents(self.start_positions, self.goal_positions)
+        self.env_agents, self.env_agents_dict = create_env_agents(self.start_positions, self.goal_positions)
         self.n_agents = len(self.env_agents)
+        self.step_count = 0
         observations, rewards, terminated, truncated, info = {}, {}, {}, {}, {}
         for agent in self.env_agents:
-            observations[agent.name] = agent.pos
+            observations[agent.name] = self.build_obs(agent.pos)
             rewards[agent.name] = -1
             terminated[agent.name] = False
             truncated[agent.name] = False
 
         return observations, rewards, terminated, truncated, info
 
+    def get_agent(self, agent_name):
+        return self.env_agents_dict[agent_name]
+
+    def sample_action(self, agent_name):
+        agent = self.get_agent(agent_name)
+        return random.choice(agent.actions)
+
     def sample_actions(self):
         return {agent.name: random.choice(agent.actions) for agent in self.env_agents}
+
+    def get_next_possible_nodes(self, state_name, action):
+        # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
+        state_node = self.nodes_dict[state_name]
+        straight = state_node
+        to_the_right = state_node
+        to_the_left = state_node
+        if action == 1:  # up
+            straight = state_node.up_node
+            to_the_right = state_node.right_node
+            to_the_left = state_node.left_node
+        elif action == 2:  # right
+            straight = state_node.right_node
+            to_the_right = state_node.down_node
+            to_the_left = state_node.up_node
+        elif action == 3:  # down
+            straight = state_node.down_node
+            to_the_right = state_node.left_node
+            to_the_left = state_node.right_node
+        elif action == 4:  # left
+            straight = state_node.left_node
+            to_the_right = state_node.up_node
+            to_the_left = state_node.down_node
+
+        dynamics_dict = {}
+        dynamics_dict[state_node.xy_name] = 0
+        if straight is not None:
+            dynamics_dict[straight.xy_name] = 0.8
+        else:
+            dynamics_dict[state_node.xy_name] += 0.8
+        if to_the_right is not None:
+            dynamics_dict[to_the_right.xy_name] = 0.1
+        else:
+            dynamics_dict[state_node.xy_name] += 0.1
+        if to_the_left is not None:
+            dynamics_dict[to_the_left.xy_name] = 0.1
+        else:
+            dynamics_dict[state_node.xy_name] += 0.1
+
+        return dynamics_dict
+
+    def get_next_possible_rewards(self, agent_name, possible_poses):
+        reward_dict = {}
+        termination_dict = {}
+        agent = self.env_agents_dict[agent_name]
+        for node_name in possible_poses:
+            node = self.nodes_dict[node_name]
+            if (node.x, node.y) == agent.goal_pos:
+                reward_dict[node_name] = self.reward_kinds['goal']
+                # termination_dict[node_name] = True
+                termination_dict[node_name] = False
+            else:
+                reward_dict[node_name] = self.reward_kinds['step']
+                termination_dict[node_name] = False
+        if self.step_count >= self.max_steps:
+            for node_name in possible_poses:
+                termination_dict[node_name] = True
+        return reward_dict, termination_dict
+
+    def dynamics(self, state, action, new_state):
+        """
+        :return: prob, reward
+        """
+        prob = 0
+        reward = 0
+        return prob, reward
 
     def take_actions(self, actions):
         for agent in self.env_agents:
             if not agent.terminated and not agent.truncated:
                 a_action = actions[agent.name]
                 a_pos = agent.pos
-                a_pos_node = self.nodes_dict[f'{a_pos[0]}_{a_pos[1]}']
+                pos_name = f'{a_pos[0]}_{a_pos[1]}'
 
-                # 0 - up, 1 - right, 2 - down, 3 - left, 4 - stay
-                straight = a_pos_node
-                to_the_right = a_pos_node
-                to_the_left = a_pos_node
-                if a_action == 0:  # up
-                    straight = a_pos_node.up_node
-                    to_the_right = a_pos_node.right_node
-                    to_the_left = a_pos_node.left_node
-                elif a_action == 1:  # right
-                    straight = a_pos_node.right_node
-                    to_the_right = a_pos_node.down_node
-                    to_the_left = a_pos_node.up_node
-                elif a_action == 2:  # down
-                    straight = a_pos_node.down_node
-                    to_the_right = a_pos_node.left_node
-                    to_the_left = a_pos_node.right_node
-                elif a_action == 3:  # left
-                    straight = a_pos_node.left_node
-                    to_the_right = a_pos_node.up_node
-                    to_the_left = a_pos_node.down_node
-                chosen_node = random.choices([to_the_left, straight, to_the_right], weights=[0.1, 0.8, 0.1])[0]
-                if chosen_node is None:
-                    agent.reward = self.reward_kinds['col']
-                    agent.truncated = True
-                    return
-                elif (chosen_node.x,  chosen_node.y) == agent.goal_pos:
-                    agent.reward = self.reward_kinds['goal']
-                    agent.terminated = True
-                else:
-                    agent.reward = self.reward_kinds['step']
+                dynamics_dict = self.get_next_possible_nodes(pos_name, a_action)
+                possible_poses = list(dynamics_dict.keys())
+                probs = [dynamics_dict[node_name] for node_name in possible_poses]
+                reward_dict, termination_dict = self.get_next_possible_rewards(agent.name, possible_poses)
 
+                chosen_node_name = random.choices(possible_poses, weights=probs)[0]
+                chosen_node = self.nodes_dict[chosen_node_name]
+
+                agent.reward = reward_dict[chosen_node_name]
+                agent.terminated = termination_dict[chosen_node_name]
                 agent.pos = (chosen_node.x, chosen_node.y)
 
     def step(self, actions):
@@ -99,8 +170,9 @@ class SquareEnv:
         """
         next_observations, rewards, terminated, truncated, info = {}, {}, {}, {}, {}
         self.take_actions(actions)
+        self.step_count += 1
         for agent in self.env_agents:
-            next_observations[agent.name] = agent.pos
+            next_observations[agent.name] = self.build_obs(agent.pos)
             rewards[agent.name] = agent.reward
             terminated[agent.name] = agent.terminated
             truncated[agent.name] = agent.truncated
@@ -112,32 +184,15 @@ class SquareEnv:
         plt.show()
 
     def render(self, info):
-        self.plot_field(self.ax[0])
+        plot_field(self.ax[0], info={
+            'height': self.height,
+            'width': self.width,
+            'nodes': self.nodes,
+            'env_agents': self.env_agents,
+        })
+        if 'value_graph' in info:
+            plot_value_function(self.ax[1], info=info['value_graph'])
         plt.pause(0.001)
-
-    def plot_field(self, ax):
-        ax.cla()
-        field = np.zeros((self.height, self.width))
-
-        # map
-        for node in self.nodes:
-            field[node.x, node.y] = 1
-
-        # start positions + goal positions + current positions
-        for agent in self.env_agents:
-            field[agent.start_pos[0], agent.start_pos[1]] = -1
-            field[agent.goal_pos[0], agent.goal_pos[1]] = 2
-            agent_circle = plt.Circle((agent.pos[0], agent.pos[1]), 0.2, color='r')
-            ax.add_patch(agent_circle)
-
-        # show
-        ax.imshow(field, origin='lower')  # , cmap='gray'
-        # circle1 = plt.Circle((0, 0), 0.2, color='r')
-        # ax.add_patch(circle1)
-        # ax.invert_yaxis()
-        # ax.plot([i for i in range(self.side_size)])
-        # ax.set_xlim(0, self.side_size)
-        # ax.set_ylim(0, self.side_size)
 
 
 def main():
