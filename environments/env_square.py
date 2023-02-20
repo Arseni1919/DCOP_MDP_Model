@@ -44,6 +44,7 @@ class SquareEnv:
         self.step_count = None
         self.max_steps = 100
         self.reward_kinds = {'col': -100, 'goal': 100, 'step': -1}
+        self.probs_dict = {'straight': 0.9, 'left': 0.05, 'right': 0.05}
 
         self.fig, self.ax = plt.subplots(3, 2)
 
@@ -107,7 +108,6 @@ class SquareEnv:
     def get_next_possible_nodes(self, state_name, action):
         # 1 - up, 2 - right, 3 - down, 4 - left, 0 - stay
         straight, to_the_right, to_the_left = self.get_nodes_after_action(state_name, action)
-        probs_dict = {'straight': 0.9, 'left': 0.05, 'right': 0.05}
         state_node = self.nodes_dict[state_name]
         # node, truncated
         dynamics_dict = {}
@@ -116,17 +116,17 @@ class SquareEnv:
         else:
             dynamics_dict[(state_node.xy_name, True)] = 0
             if straight is not None:
-                dynamics_dict[(straight.xy_name, False)] = probs_dict['straight']
+                dynamics_dict[(straight.xy_name, False)] = self.probs_dict['straight']
             else:
-                dynamics_dict[(state_node.xy_name, True)] += probs_dict['straight']
+                dynamics_dict[(state_node.xy_name, True)] += self.probs_dict['straight']
             if to_the_right is not None:
-                dynamics_dict[(to_the_right.xy_name, False)] = probs_dict['right']
+                dynamics_dict[(to_the_right.xy_name, False)] = self.probs_dict['right']
             else:
-                dynamics_dict[(state_node.xy_name, True)] += probs_dict['right']
+                dynamics_dict[(state_node.xy_name, True)] += self.probs_dict['right']
             if to_the_left is not None:
-                dynamics_dict[(to_the_left.xy_name, False)] = probs_dict['left']
+                dynamics_dict[(to_the_left.xy_name, False)] = self.probs_dict['left']
             else:
-                dynamics_dict[(state_node.xy_name, True)] += probs_dict['left']
+                dynamics_dict[(state_node.xy_name, True)] += self.probs_dict['left']
         return dynamics_dict
 
     def get_next_possible_rewards(self, agent_name, dynamics_dict):
@@ -209,13 +209,13 @@ class SquareEnv:
         #     plot_policy_function(self.ax[1][1], info=info['policy_graph_1'])
 
         if 'value_graph_0' in info:
-            plot_value_function(self.ax[1][0], info=info['value_graph_0'])
+            plot_value_function(self.ax[0][1], info=info['value_graph_0'])
 
         if 'value_graph_1' in info:
             plot_value_function(self.ax[1][1], info=info['value_graph_1'])
 
-        if 'value_graph_united' in info:
-            plot_value_function_united(self.ax[0][1], info=info['value_graph_united'])
+        if 'value_graph_2' in info:
+            plot_value_function(self.ax[2][1], info=info['value_graph_2'])
 
         plt.pause(0.001)
 

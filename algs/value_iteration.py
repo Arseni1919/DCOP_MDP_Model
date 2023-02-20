@@ -72,8 +72,8 @@ def main():
     nodes, nodes_dict, height, width = build_graph_nodes(img_dir=img_dir, path='../maps', show_map=False)
     # s_g_nodes = random.sample(nodes, 2)
     square_env = SquareEnv(
-        start_positions=[(3, 3), (3, 7)],
-        goal_positions=[(7, 7), (7, 3)],
+        start_positions=[(3, 2), (1, 5), (3, 8)],
+        goal_positions=[(7, 8), (7, 5), (7, 2)],
         nodes=nodes, nodes_dict=nodes_dict,
         height=height, width=width
     )
@@ -83,25 +83,29 @@ def main():
     agents_values = {}
     for agent in agents:
         policy, values_of_states = value_iteration(env=square_env, agent_name=agent.name)
-        agents_policies[agent.name] = policy
+        agents_policies[agent.name] = get_policy_from_values(square_env, agent.name, values_of_states)
         agents_values[agent.name] = values_of_states
 
     # slight change
     v_func_0 = agents_values['agent_0']
     v_func_1 = agents_values['agent_1']
-
-    # v_func_2 = copy.deepcopy(agents_values['agent_1'])
-
+    v_func_2 = agents_values['agent_2']
+    alpha = 0.1
     for state_name, state_value in v_func_0.items():
-        v_func_1[state_name] -= 0.2 * state_value
-
-    agents_policies['agent_0'] = get_policy_from_values(square_env, 'agent_0', v_func_0)
+        v_func_1[state_name] -= alpha * state_value
     agents_policies['agent_1'] = get_policy_from_values(square_env, 'agent_1', v_func_1)
 
-    for i_run in range(1000):
+    for state_name, state_value in v_func_0.items():
+        v_func_2[state_name] -= alpha * v_func_0[state_name]
+        v_func_2[state_name] -= alpha * v_func_1[state_name]
+    agents_policies['agent_2'] = get_policy_from_values(square_env, 'agent_2', v_func_2)
+
+    collisions_list = []
+    for i_run in range(100):
         obs, rewards, terminated, truncated, info = square_env.reset()
         termination_list = []
         step = 0
+        collisions = 0
         while True not in termination_list:
             print(f'\r| run {i_run} | step {step} |', end='')
             actions = {}
@@ -109,6 +113,11 @@ def main():
                 agent_obs = obs[agent.name]
                 actions[agent.name] = agents_policies[agent.name][agent_obs]
             next_obs, rewards, terminated, truncated, info = square_env.step(actions)
+
+            for agent_name_1, curr_obs_1 in next_obs.items():
+                for agent_name_2, curr_obs_2 in next_obs.items():
+                    if agent_name_1 != agent_name_2 and curr_obs_1 == curr_obs_2:
+                        collisions += 1
 
             termination_list = []
             termination_list.append(all(terminated.values()))
@@ -149,15 +158,20 @@ def main():
                     'v_func': agents_values,
                     'policy': agents_policies
                 },
-                # 'value_graph_united': {
-                #     'height': square_env.height,
-                #     'width': square_env.width,
-                #     'node_dict': square_env.nodes_dict,
-                #     'v_func': agents_values,
-                #     'policy': agents_policies
-                # }
+                'value_graph_2': {
+                    'name': 'agent_2',
+                    'height': square_env.height,
+                    'width': square_env.width,
+                    'node_dict': square_env.nodes_dict,
+                    'v_func': agents_values,
+                    'policy': agents_policies
+                },
             })
 
+        collisions_list.append(collisions)
+
+    print()
+    print(collisions_list)
     square_env.close()
 
 
