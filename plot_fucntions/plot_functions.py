@@ -87,3 +87,60 @@ def plot_value_function_united(ax, info):
 
     # show
     ax.imshow(field, origin='lower')  # , cmap='gray' , origin='lower'
+
+
+def plot_var_func_nodes(ax, info):
+    ax.cla()
+    var_nodes_list = info['var_nodes_list']
+    func_nodes_list = info['func_nodes_list']
+
+    # plot links between nodes
+    for pair in combinations(var_nodes_list, 2):
+        var1, var2 = pair[0], pair[1]
+        ax.plot([var1.x, var2.x], [var1.y, var2.y])
+
+    # plot actions
+    for var in var_nodes_list:
+        new_x, new_y, dx, dy = var.action_dir()
+        ax.arrow(var.x, var.y, dx, dy, width=0.5, head_width=1)
+
+    ax.set_title('Var and Func Nodes')
+    radius = var_nodes_list[0].radius
+    ax.set_xlim(0 - radius, 100 + radius)
+    ax.set_ylim(0 - radius, 100 + radius)
+
+
+def plot_func_node(ax, info):
+    ax.cla()
+    func_node = info['func_node']
+
+    field = func_node.func
+    if field.shape == (5, 5):
+        names = ['still', 'up', 'right', 'down', 'left']
+        ax.set_xticks(np.arange(5), labels=names)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        ax.set_yticks(np.arange(5), labels=names)
+    # show
+    ax.imshow(field, origin='lower')  # , cmap='gray' , origin='lower'
+
+
+def plot_total_cost(ax, info):
+    ax.cla()
+    iterations = info['iterations']
+    total_costs = info['total_costs']
+    ax.plot(total_costs)
+    ax.set_xlim(0, iterations)
+    ax.set_title('Total Costs')
+
+
+def plot_actions(ax, info):
+    ax.cla()
+    var_nodes_list = info['var_nodes_list']
+    func_nodes_list = info['func_nodes_list']
+    iterations = info['iterations']
+    for var in var_nodes_list:
+        ax.plot(var.action_history, label=var.name)
+    ax.legend()
+    ax.set_xlim(0, iterations)
+    ax.set_title('Actions')
+
