@@ -226,7 +226,7 @@ def train(var_nodes_list, func_nodes_list, plotter, plot_every):
 def main():
     plotter = Plotter()
     plot_every = 100
-    n_var_nodes = 50
+    n_var_nodes = 10
     x_l = random.sample(range(100), n_var_nodes)
     y_l = random.sample(range(100), n_var_nodes)
     var_nodes_list = [VarNodeRL(num, x_l[num], y_l[num]) for num in range(n_var_nodes)]
