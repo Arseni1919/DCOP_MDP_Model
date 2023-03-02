@@ -75,10 +75,11 @@ class VarNodeRL:
 
         return new_x, new_y, dx, dy
 
-    def decide_action(self, dsa_prob=0.5):
+    def decide_action(self, dsa_prob):
         # if random.random
         # print(self.actions_weights)
         # action = np.random.choice(self.domain, 1, p=self.actions_weights)[0]
+        # dsa_prob = min(dsa_prob, 0.95)
         if random.random() < dsa_prob:
             max_weight = np.max(self.actions_weights)
             action_indx = np.where(self.actions_weights == max_weight)[0]
@@ -181,16 +182,15 @@ def calc_total_cost(var_nodes_list):
     return total
 
 
-def train(var_nodes_list, func_nodes_list, plotter):
+def train(var_nodes_list, func_nodes_list, plotter, plot_every):
     """
     curAvg = curAvg + (newNum - curAvg)/n
     """
-    plot_every = 10
     iterations = 1000
     alpha = 0.9
     total_costs = []
     for iteration in range(iterations):
-        dsa_prob = iteration/iterations
+        dsa_prob = iteration/(0.8 * iterations)
         # decide on action
         for var in var_nodes_list:
             var.decide_action(dsa_prob=dsa_prob)
@@ -225,7 +225,8 @@ def train(var_nodes_list, func_nodes_list, plotter):
 
 def main():
     plotter = Plotter()
-    n_var_nodes = 5
+    plot_every = 100
+    n_var_nodes = 50
     x_l = random.sample(range(100), n_var_nodes)
     y_l = random.sample(range(100), n_var_nodes)
     var_nodes_list = [VarNodeRL(num, x_l[num], y_l[num]) for num in range(n_var_nodes)]
@@ -233,7 +234,7 @@ def main():
     clique_vars(var_nodes_list)
     create_func_nodes(var_nodes_list, func_nodes_list)
 
-    train(var_nodes_list, func_nodes_list, plotter)
+    train(var_nodes_list, func_nodes_list, plotter, plot_every)
 
     plotter.render(info={
         'var_nodes_list': var_nodes_list,

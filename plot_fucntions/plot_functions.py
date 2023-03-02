@@ -138,8 +138,12 @@ def plot_actions(ax, info):
     var_nodes_list = info['var_nodes_list']
     func_nodes_list = info['func_nodes_list']
     iterations = info['iterations']
+    counter = 0
     for var in var_nodes_list:
         ax.plot(var.action_history, label=var.name)
+        counter += 1
+        if counter > 2:
+            break
     ax.legend()
     ax.set_xlim(0, iterations)
     ax.set_title('Actions')
