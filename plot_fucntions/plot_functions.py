@@ -121,6 +121,13 @@ def plot_func_node(ax, info):
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
         ax.set_yticks(np.arange(5), labels=names)
     # show
+    # for node_name, node_v in info['v_func'][agent_name].items():
+    #     node = node_dict[node_name]
+    #     field[node.x, node.y] = node_v
+    #     ax.text(node.y, node.x, f'{node_v: .2f}', ha="center", va="center", color="w", size=3)
+    for i in range(field.shape[0]):
+        for j in range(field.shape[1]):
+            text = ax.text(j, i, f'{field[i, j]: .2f}', ha="center", va="center", color="k", size=5)
     ax.imshow(field, origin='lower')  # , cmap='gray' , origin='lower'
 
 
@@ -144,6 +151,9 @@ def plot_actions(ax, info):
         counter += 1
         if counter > 2:
             break
+    if var_nodes_list[0].n_actions == 5:
+        names = ['still', 'up', 'right', 'down', 'left']
+        ax.set_yticks(np.arange(5), labels=names)
     ax.legend()
     ax.set_xlim(0, iterations)
     ax.set_title('Actions')

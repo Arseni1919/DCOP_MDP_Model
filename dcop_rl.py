@@ -83,6 +83,7 @@ class VarNodeRL:
         if random.random() < dsa_prob:
             max_weight = np.max(self.actions_weights)
             action_indx = np.where(self.actions_weights == max_weight)[0]
+            # action_indx = np.random.choice(self.domain, 1, p=self.actions_weights)
         else:
             action_indx = self.domain
         self.action = np.random.choice(action_indx)
@@ -224,9 +225,18 @@ def train(var_nodes_list, func_nodes_list, plotter, plot_every):
 
 
 def main():
+    set_seed = True
+    if set_seed:
+        seed = 444
+    else:
+        seed = random.randint(0, 1000)
+    print(f'{seed=}')
+    random.seed(seed)
+    np.random.seed(seed)
+
     plotter = Plotter()
     plot_every = 100
-    n_var_nodes = 10
+    n_var_nodes = 5
     x_l = random.sample(range(100), n_var_nodes)
     y_l = random.sample(range(100), n_var_nodes)
     var_nodes_list = [VarNodeRL(num, x_l[num], y_l[num]) for num in range(n_var_nodes)]
