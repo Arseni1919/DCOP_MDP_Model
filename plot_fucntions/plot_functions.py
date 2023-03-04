@@ -95,9 +95,13 @@ def plot_var_func_nodes(ax, info):
     func_nodes_list = info['func_nodes_list']
 
     # plot links between nodes
-    for pair in combinations(var_nodes_list, 2):
-        var1, var2 = pair[0], pair[1]
-        ax.plot([var1.x, var2.x], [var1.y, var2.y])
+    # for pair in combinations(var_nodes_list, 2):
+    #     var1, var2 = pair[0], pair[1]
+    #     ax.plot([var1.x, var2.x], [var1.y, var2.y])
+
+    x_list = [var.x for var in var_nodes_list]
+    y_list = [var.y for var in var_nodes_list]
+    ax.scatter(x_list, y_list, marker='.', alpha=0.8, c='orange')
 
     # plot actions
     for var in var_nodes_list:

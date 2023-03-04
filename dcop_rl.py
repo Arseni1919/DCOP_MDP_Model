@@ -191,7 +191,7 @@ def train(var_nodes_list, func_nodes_list, plotter, plot_every):
     alpha = 0.9
     total_costs = []
     for iteration in range(iterations):
-        dsa_prob = iteration/(0.8 * iterations)
+        dsa_prob = np.sqrt(iteration/(0.8 * iterations))
         # decide on action
         for var in var_nodes_list:
             var.decide_action(dsa_prob=dsa_prob)
@@ -236,7 +236,7 @@ def main():
 
     plotter = Plotter()
     plot_every = 100
-    n_var_nodes = 5
+    n_var_nodes = 10
     x_l = random.sample(range(100), n_var_nodes)
     y_l = random.sample(range(100), n_var_nodes)
     var_nodes_list = [VarNodeRL(num, x_l[num], y_l[num]) for num in range(n_var_nodes)]
